@@ -5,7 +5,7 @@ import { getApartments } from '../lib/db.ts';
 
 // This page is rendered by the server on every request, so it always shows
 // the current data from the database.
-const apartments = getApartments();
+const apartments = await getApartments();
 ---
 
 <Layout title="Home">

@@ -4,9 +4,9 @@ A fast direct-booking website for a shortlet apartment owner. Guests browse
 apartments, pick dates, and pay with Paystack (test mode). The host sees a
 calendar. **Booked dates are blocked, so double bookings cannot happen.**
 
-Built with Astro (server-rendered pages), SQLite via `better-sqlite3`,
-flatpickr for the date picker, and self-hosted fonts. Almost no JavaScript is
-sent to the browser.
+Built with Astro (server-rendered pages), Neon PostgreSQL for persistent
+bookings, flatpickr for the date picker, and self-hosted fonts. Almost no
+JavaScript is sent to the browser.
 
 ---
 
@@ -16,8 +16,8 @@ You need Node.js 20 or newer (check with `node --version`).
 
 ```bash
 npm install      # install the packages (first time only)
-cp .env.example .env   # then edit .env (see below)
-npm run seed     # create the database and fill it with sample data
+cp .env.example .env   # then add your Neon connection string (see below)
+npm run seed     # create the Neon tables and fill them with sample data
 npm run dev      # start the site at http://localhost:4321
 ```
 
@@ -37,6 +37,7 @@ already listed in `.gitignore`, so it is never committed.
 
 | Key | What it is |
 |---|---|
+| `DATABASE_URL` | Your Neon PostgreSQL connection string. Keep it private. |
 | `PAYSTACK_SECRET_KEY` | Your **test** secret key from the Paystack dashboard (starts with `sk_test_`). Keep it empty to run in **demo payment mode**. |
 | `HOST_PASSWORD` | The password you use to open `/host`. |
 | `SITE_URL` | Where the site runs, e.g. `http://localhost:4321`. Paystack redirects guests back here. |
@@ -44,6 +45,8 @@ already listed in `.gitignore`, so it is never committed.
 
 > The secret key is only ever used on the server. It is never sent to the
 > browser.
+
+For Vercel, add `DATABASE_URL` and `HOST_PASSWORD` in **Project Settings → Environment Variables**. Add a Paystack **test** key only if you want hosted test checkout; with no Paystack key, the site uses demo payment mode.
 
 ### Demo payment mode
 

@@ -3,7 +3,7 @@
 // send the visitor to /host/login.
 import Layout from '../../layouts/Layout.astro';
 import { isValidSessionCookie, HOST_COOKIE_NAME } from '../../lib/auth.ts';
-import { getApartments, getApartmentBySlug, db } from '../../lib/db.ts';
+import { getApartments, getApartmentBySlug, getBookingsForApartment } from '../../lib/db.ts';
 import {
   addMonths,
   currentMonthString,
@@ -19,12 +19,12 @@ if (!isValidSessionCookie(Astro.cookies.get(HOST_COOKIE_NAME)?.value)) {
   return Astro.redirect('/host/login');
 }
 
-const apartments = getApartments();
+const apartments = await getApartments();
 
 // The visitor picks an apartment and a month with two links in the address bar.
 const requestedSlug = Astro.url.searchParams.get('apartment') ?? '';
 const apartment =
-  getApartmentBySlug(requestedSlug) ?? apartments[0] ?? undefined;
+  (await getApartmentBySlug(requestedSlug)) ?? apartments[0] ?? undefined;
 
 if (!apartment) {
   return new Response('No apartments in the database yet. Run npm run seed.', {
@@ -50,14 +50,7 @@ interface HostBooking {
   created_at: string;
 }
 
-const bookings = db
-  .prepare(
-    `SELECT id, reference, guest_name, guests, check_in, check_out, total_amount, status, created_at
-       FROM bookings
-      WHERE apartment_id = ?
-      ORDER BY check_in`
-  )
-  .all(apartment.id) as HostBooking[];
+const bookings = await getBookingsForApartment(apartment.id);
 
 // Which guest occupies each night of the displayed month.
 // A night belongs to a booking when check_in <= night < check_out.

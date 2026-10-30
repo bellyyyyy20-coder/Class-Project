@@ -9,13 +9,13 @@ import { formatDate, nightsBetween } from '../../lib/dates.ts';
 import { formatNaira } from '../../lib/money.ts';
 
 const reference = Astro.params.reference ?? '';
-const booking = getBookingByReference(reference);
+const booking = await getBookingByReference(reference);
 
 if (!booking) {
   return new Response('We do not know that booking reference.', { status: 404 });
 }
 
-const apartment = getApartmentById(booking.apartment_id);
+const apartment = await getApartmentById(booking.apartment_id);
 const nights = nightsBetween(booking.check_in, booking.check_out);
 const demoMode = !hasPaystackKey();
 

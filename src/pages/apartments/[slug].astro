@@ -7,7 +7,7 @@ import { getApartmentBySlug } from '../../lib/db.ts';
 
 // In server-rendered Astro, URL parameters arrive in Astro.params.
 const slug = Astro.params.slug ?? '';
-const apartment = getApartmentBySlug(slug);
+const apartment = await getApartmentBySlug(slug);
 
 // A slug that does not exist gives a proper 404 page.
 if (!apartment) {

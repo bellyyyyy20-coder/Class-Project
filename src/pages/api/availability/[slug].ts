@@ -13,7 +13,7 @@ import { addDays, todayString } from '../../../lib/dates.ts';
 
 export const GET: APIRoute = async ({ params }) => {
   const slug = params.slug ?? '';
-  const apartment = getApartmentBySlug(slug);
+  const apartment = await getApartmentBySlug(slug);
 
   if (!apartment) {
     return json({ error: 'Apartment not found' }, 404);
@@ -22,7 +22,7 @@ export const GET: APIRoute = async ({ params }) => {
   const today = todayString();
   // Look one year ahead - that is far enough for a date picker.
   const oneYearAhead = addDays(today, 365);
-  const nights = getBookedNights(apartment.id, today, oneYearAhead);
+  const nights = await getBookedNights(apartment.id, today, oneYearAhead);
 
   return json({
     apartment: apartment.slug,
