@@ -21,6 +21,9 @@ npm run seed     # create the Neon tables and fill them with sample data
 npm run dev      # start the site at http://localhost:4321
 ```
 
+> `npm run seed` **deletes existing bookings** and starts from fresh sample
+> data. Do not run it on a database you want to keep.
+
 Other commands:
 
 ```bash
@@ -41,10 +44,27 @@ already listed in `.gitignore`, so it is never committed.
 | `PAYSTACK_SECRET_KEY` | Your **test** secret key from the Paystack dashboard (starts with `sk_test_`). Keep it empty to run in **demo payment mode**. |
 | `HOST_PASSWORD` | The password you use to open `/host`. |
 | `SITE_URL` | Where the site runs, e.g. `http://localhost:4321`. Paystack redirects guests back here. |
-| `RESEND_API_KEY` | Not used yet (stretch goal). |
+| `PUBLIC_WHATSAPP_NUMBER` | The WhatsApp number behind the "Contact us" buttons. International form, digits only, e.g. `2348012345678`. **The example value is a placeholder - replace it.** |
+| `HOST_EMAIL` | Your inbox. Contact-form messages are sent here. |
+| `RESEND_API_KEY` | Key from [Resend](https://resend.com). Leave it empty and the contact form shows a friendly error instead of sending. |
+| `RESEND_FROM_EMAIL` | The "from" address for contact emails. Use `ShortStay <onboarding@resend.dev>` while testing, or an address on a domain you verified in Resend, e.g. `ShortStay <hello@yourdomain.com>`. |
 
 > The secret key is only ever used on the server. It is never sent to the
 > browser.
+
+**Email without your own domain (test mode):** Resend gives every new account
+the sender `onboarding@resend.dev`, but it will only deliver to the email
+address the Resend account was created with. So while testing, set:
+
+```env
+HOST_EMAIL=the-address-you-signed-up-with@gmail.com
+RESEND_FROM_EMAIL=ShortStay <onboarding@resend.dev>
+```
+
+To email any other inbox (your real host inbox, for example), add a domain at
+[resend.com/domains](https://resend.com/domains), verify it with the DNS records
+Resend shows you, then change `RESEND_FROM_EMAIL` to an address on that domain.
+No code changes are needed.
 
 For Vercel, add `DATABASE_URL` and `HOST_PASSWORD` in **Project Settings → Environment Variables**. Add a Paystack **test** key only if you want hosted test checkout; with no Paystack key, the site uses demo payment mode.
 
@@ -61,7 +81,7 @@ Paystack checkout is used instead - no code changes needed.
 
 ### Booking (no payment needed)
 
-1. Open http://localhost:4321 and click an apartment.
+1. Open http://localhost:4321/apartments and click an apartment.
 2. In the booking panel, click **Your dates** and pick a check-in and a
    check-out (greyed-out days are already booked).
 3. Fill in name, email, phone and number of guests. The total updates as you
@@ -99,6 +119,17 @@ The rule lives in one function, `rangesOverlap` in `src/lib/availability.ts`,
 and is checked **twice**: when the booking is created and again when the
 payment is verified - both times inside a database transaction.
 
+### Contact form
+
+1. Scroll to **Let us plan your stay** on the home page.
+2. Fill in name, email, phone and a message, then click **Send message**.
+3. With a valid `RESEND_API_KEY` and `RESEND_FROM_EMAIL`, the message arrives at
+   `HOST_EMAIL` and the page thanks the guest.
+4. Without a Resend key, the page shows a clear error and points to WhatsApp and
+   email instead. Nothing breaks.
+5. The hidden `website` field is a honeypot: if a bot fills it, the form
+   pretends to succeed and sends nothing.
+
 ### Host calendar
 
 1. Go to http://localhost:4321/host - you are sent to the login page.
@@ -114,28 +145,33 @@ payment is verified - both times inside a database transaction.
 
 ```
 db/
-  schema.sql       database tables
-  seed.ts          sample data (run with npm run seed)
-  shortstay.db     the SQLite file (created by seed, not committed)
-public/images/     apartment photos (1200x900, from Unsplash's free library)
+  schema.sql         database tables
+  seed.ts            sample data (run with npm run seed - this RESETS the database)
+  upgrade-tiers.ts   one-time, additive upgrade that added room tiers
+public/images/       apartment photos (1200x900 or 1600x900, from Unsplash)
 src/
-  components/      ApartmentCard, BookingPanel, Header, Footer
-  layouts/         Layout.astro - the shell every page uses
+  components/        ApartmentCard, BookingPanel, Header, Footer
+  layouts/           Layout.astro - the shell every page uses
   lib/
     availability.ts  the overlap rule + booked-night lookups
     auth.ts          host login (signed, httpOnly cookie)
     db.ts            database connection and small query helpers
     dates.ts         YYYY-MM-DD date helpers
+    email.ts         sends contact-form email through Resend
     env.ts           reads .env at runtime
     money.ts         kobo <-> Naira
     paystack.ts      Paystack initialise + verify (server only)
+    tiers.ts         the five room tiers, shared by the landing page and filters
+    whatsapp.ts      builds the wa.me links
   pages/
-    index. apartment list
-    apartments/[slug].astro   detail page with booking panel
-    book.ts                   POST: validate, create pending booking, start payment
-    booking/callback.ts       verify payment, confirm booking
-    booking/[reference].astro confirmation page
-    api/availability/[slug].ts  booked nights as JSON
+    index.astro       the landing page
+    contact.ts        POST: validate the contact form and email the host
+    apartments/index.astro              apartment list with tier filters
+    apartments/[slug].astro             detail page with booking panel
+    book.ts                             POST: validate, create pending booking, start payment
+    booking/callback.ts                 verify payment, confirm booking
+    booking/[reference].astro           confirmation page
+    api/availability/[slug].ts          booked nights as JSON
     host/login.astro, host/session.ts, host/index.astro, host/logout.ts
   styles/
     global.css              colours, typography, buttons, cards, forms
@@ -152,7 +188,7 @@ src/
   nights, because nobody should be able to block a calendar by not paying.
 - **Payments are never trusted from the redirect alone** - the server asks
   Paystack directly, and checks the amount matches the booking.
-- **All SQL uses `?` placeholders**, so form input can never become SQL code.
+- **All SQL uses `$1`, `$2` placeholders**, so form input can never become SQL code.
 - All form input is validated on the server, even though the browser validates
   it too.
 

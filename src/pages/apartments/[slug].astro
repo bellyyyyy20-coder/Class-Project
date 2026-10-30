@@ -22,7 +22,7 @@ const rules = apartment.house_rules.split('\n').map((line) => line.trim()).filte
 <Layout title={apartment.name} description={apartment.description.slice(0, 155)}>
   <section class="section page-head">
     <div class="container">
-      <a href="/" class="back-link">← All apartments</a>
+      <a href="/apartments" class="back-link">← All apartments</a>
       <h1>{apartment.name}</h1>
       <p class="muted">{apartment.area}</p>
     </div>

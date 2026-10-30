@@ -135,6 +135,44 @@ textarea:focus-visible {
 
 .small { font-size: 0.875rem; }
 
+/* The small uppercase line that introduces each section */
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-accent-text);
+  margin: 0 0 var(--space-2);
+}
+
+/* Apartment cards: 1 column on phones, 2 on tablets, 3 on desktop */
+.apartment-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-5);
+}
+
+@media (min-width: 640px) {
+  .apartment-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .apartment-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* The spam trap on the contact form: invisible to people, not to bots. */
+.honeypot {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
 /* --------------------------------------------------------------------------
    Buttons
    -------------------------------------------------------------------------- */
@@ -220,7 +258,8 @@ textarea:focus-visible {
 }
 
 .field input,
-.field select {
+.field select,
+.field textarea {
   width: 100%;
   background: var(--color-card);
   border: 1px solid var(--color-border);
@@ -231,8 +270,14 @@ textarea:focus-visible {
   color: var(--color-text);
 }
 
+.field textarea {
+  resize: vertical;
+  min-height: 120px;
+}
+
 .field input:focus,
-.field select:focus {
+.field select:focus,
+.field textarea:focus {
   border-color: var(--color-primary);
 }
 

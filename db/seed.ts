@@ -20,6 +20,8 @@ interface ApartmentSeed {
   slug: string;
   name: string;
   area: string;
+  /** Room tier, shown as "Standard", "Suite", etc. on the site. */
+  tier: string;
   description: string;
   pricePerNightNaira: number;
   maxGuests: number;
@@ -30,7 +32,7 @@ interface ApartmentSeed {
 
 const apartments: ApartmentSeed[] = [
   {
-    slug: 'lekki-suite', name: 'The Lekki Suite', area: 'Lekki Phase 1, Lagos',
+    slug: 'lekki-suite', name: 'The Lekki Suite', area: 'Lekki Phase 1, Lagos', tier: 'Executive',
     description: 'A calm, sunlit two-bedroom apartment a short drive from the beach. Floor-to-ceiling windows, a full kitchen and a quiet balcony for slow mornings. Ideal for families or friends travelling together.',
     pricePerNightNaira: 45000, maxGuests: 4,
     amenities: 'Wi-Fi, Air conditioning, Full kitchen, Smart TV, Washing machine, Backup power, Free parking, Balcony',
@@ -38,7 +40,7 @@ const apartments: ApartmentSeed[] = [
     photos: 'lekki-suite-1.jpg,lekki-suite-2.jpg,lekki-suite-3.jpg',
   },
   {
-    slug: 'ikoyi-garden-flat', name: 'Ikoyi Garden Flat', area: 'Old Ikoyi, Lagos',
+    slug: 'ikoyi-garden-flat', name: 'Ikoyi Garden Flat', area: 'Old Ikoyi, Lagos', tier: 'Deluxe',
     description: 'A serene one-bedroom flat tucked inside a private garden compound. Tall palms, crisp linens and a workspace with fast internet. Made for business trips that feel like a rest.',
     pricePerNightNaira: 75000, maxGuests: 2,
     amenities: 'Wi-Fi, Air conditioning, Full kitchen, Workspace, Smart TV, Generator, Housekeeping on request',
@@ -46,12 +48,28 @@ const apartments: ApartmentSeed[] = [
     photos: 'ikoyi-garden-flat-1.jpg,ikoyi-garden-flat-2.jpg,ikoyi-garden-flat-3.jpg',
   },
   {
-    slug: 'yaba-studio', name: 'Yaba Studio', area: 'Yaba, Lagos',
+    slug: 'yaba-studio', name: 'Yaba Studio', area: 'Yaba, Lagos', tier: 'Standard',
     description: 'A bright, clever studio in the heart of Yaba, minutes from the tech hubs and the mainland market. Everything you need, nothing you do not. A comfortable base for a short city stay.',
     pricePerNightNaira: 30000, maxGuests: 2,
     amenities: 'Wi-Fi, Air conditioning, Kitchenette, Smart TV, Fan, Secure entrance',
     houseRules: 'Check-in after 2:00 PM. Check-out before 11:00 AM.\nMaximum 2 guests.\nNo smoking indoors.\nNo parties or events.\nVisitors are not allowed overnight.',
     photos: 'yaba-studio-1.jpg,yaba-studio-2.jpg,yaba-studio-3.jpg',
+  },
+  {
+    slug: 'marina-suite', name: 'The Marina Suite', area: 'Victoria Island, Lagos', tier: 'Suite',
+    description: 'A light-filled suite with a separate sitting room, wide city views and a kitchen made for slow breakfasts. Step out to the waterfront, galleries and the business district.',
+    pricePerNightNaira: 95000, maxGuests: 4,
+    amenities: 'Wi-Fi, Air conditioning, Full kitchen, Separate living room, Smart TV, Washing machine, Backup power, Concierge',
+    houseRules: 'Check-in after 2:00 PM. Check-out before 11:00 AM.\nMaximum 4 guests.\nNo smoking indoors.\nNo parties or events.\nQuiet hours after 10:00 PM.',
+    photos: 'marina-suite-1.jpg,marina-suite-2.jpg,marina-suite-3.jpg',
+  },
+  {
+    slug: 'presidential-suite', name: 'The Presidential Suite', area: 'Ikoyi, Lagos', tier: 'Presidential Suite',
+    description: 'Our largest stay: a private three-bedroom residence with a dining room, a study and a terrace above the treetops. Made for families, celebrations and long, unhurried visits.',
+    pricePerNightNaira: 150000, maxGuests: 6,
+    amenities: 'Wi-Fi, Air conditioning, Full kitchen, Dining room, Study, Private terrace, Smart TV, Housekeeping daily, Secure parking',
+    houseRules: 'Check-in after 2:00 PM. Check-out before 11:00 AM.\nMaximum 6 guests.\nNo smoking indoors.\nNo parties or events without the host’s approval.\nQuiet hours after 10:00 PM.',
+    photos: 'presidential-suite-1.jpg,presidential-suite-2.jpg,presidential-suite-3.jpg',
   },
 ];
 
@@ -59,9 +77,9 @@ const apartmentIds: Record<string, number> = {};
 for (const apartment of apartments) {
   const rows = await sql.query(
     `INSERT INTO apartments
-       (slug, name, area, description, price_per_night, max_guests, amenities, house_rules, photos)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
-    [apartment.slug, apartment.name, apartment.area, apartment.description,
+       (slug, name, area, tier, description, price_per_night, max_guests, amenities, house_rules, photos)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+    [apartment.slug, apartment.name, apartment.area, apartment.tier, apartment.description,
       apartment.pricePerNightNaira * 100, apartment.maxGuests, apartment.amenities,
       apartment.houseRules, apartment.photos]
   );

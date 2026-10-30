@@ -35,10 +35,11 @@ export function loadEnv(): void {
       value = value.slice(1, -1);
     }
 
-    // A value already set in the real environment wins over the file
-    if (process.env[key] === undefined) {
-      process.env[key] = value;
-    }
+    // The .env file wins when it exists, because it is the file you edit.
+    // (The dev server keeps old values in memory after a restart, so without
+    // this an edited key would be ignored until the whole server was killed.)
+    // On a real host there is no .env file, so the host's own settings win.
+    process.env[key] = value;
   }
 }
 

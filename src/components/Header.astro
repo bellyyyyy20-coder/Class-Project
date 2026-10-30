@@ -1,4 +1,12 @@
 ---
+import { whatsappUrl } from '../lib/whatsapp.ts';
+
+// The "Contact us" button opens WhatsApp with a message already typed. If no
+// number is set in .env yet, it falls back to the contact section on the home
+// page, so the button is never a dead link.
+const chatUrl = whatsappUrl() || '/#contact';
+const opensWhatsApp = chatUrl.startsWith('https://');
+
 // Thin gold line under the header, a serif logo with a small gold detail,
 // and only a few links (style guide: "few links only").
 ---
@@ -9,7 +17,15 @@
       ShortStay<span class="logo-dot" aria-hidden="true"></span>
     </a>
     <nav class="site-nav" aria-label="Main">
-      <a href="/">Apartments</a>
+      <a href="/apartments">Apartments</a>
+      <a
+        class="btn btn-primary header-contact"
+        href={chatUrl}
+        target={opensWhatsApp ? '_blank' : undefined}
+        rel={opensWhatsApp ? 'noreferrer' : undefined}
+      >
+        Contact us
+      </a>
       <a href="/host" class="host-link">Host</a>
     </nav>
   </div>
@@ -67,4 +83,7 @@
   .site-nav a:hover {
     color: var(--color-primary);
   }
+  .site-nav .header-contact { color: white; padding: 9px 16px; }
+  .site-nav .header-contact:hover { color: white; }
+  @media (max-width: 420px) { .site-nav { gap: var(--space-3); } .site-nav .host-link { display: none; } }
 </style>

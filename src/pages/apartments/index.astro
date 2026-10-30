@@ -1,0 +1,100 @@
+---
+// The apartment list at /apartments.
+//
+// The ?tier= query (for example /apartments?tier=suite) filters the list. We
+// compare it with the apartment's real `tier` column in the database, so the
+// landing page and this page always agree.
+import Layout from '../../layouts/Layout.astro';
+import ApartmentCard from '../../components/ApartmentCard.astro';
+import { getApartments } from '../../lib/db.ts';
+import { ROOM_TIERS, tierName } from '../../lib/tiers.ts';
+
+const allApartments = await getApartments();
+
+// Only accept a tier slug we know about; anything else means "show everything".
+const tier = Astro.url.searchParams.get('tier') ?? '';
+const activeTierName = tierName(tier);
+const filtered = activeTierName
+  ? allApartments.filter((apartment) => apartment.tier === activeTierName)
+  : allApartments;
+---
+
+<Layout
+  title={activeTierName ? `${activeTierName} apartments` : 'Apartments'}
+  description="Browse shortlet apartments in Lagos by room tier, then pick your dates."
+>
+  <section class="section">
+    <div class="container">
+      <p class="eyebrow">Find your Lagos stay</p>
+      <h1>{activeTierName || 'Our apartments'}</h1>
+      <p class="list-lead">
+        Choose a welcoming space, then select your dates to see the total.
+      </p>
+
+      <!-- Filter chips: one per tier, plus "All apartments". -->
+      <nav class="filters" aria-label="Filter by room tier">
+        <a class:list={{ active: !activeTierName }} href="/apartments">All apartments</a>
+        {ROOM_TIERS.map((roomTier) => (
+          <a
+            class:list={{ active: tier === roomTier.slug }}
+            href={`/apartments?tier=${roomTier.slug}`}
+          >
+            {roomTier.name}
+          </a>
+        ))}
+      </nav>
+
+      {filtered.length ? (
+        <div class="apartment-grid">
+          {filtered.map((apartment) => <ApartmentCard apartment={apartment} />)}
+        </div>
+      ) : (
+        <p class="empty">
+          No apartments are listed in this tier yet.
+          <a href="/apartments">See all apartments</a>.
+        </p>
+      )}
+    </div>
+  </section>
+</Layout>
+
+<style>
+  .list-lead {
+    max-width: 60ch;
+    color: var(--color-muted);
+  }
+
+  .filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin: var(--space-5) 0 var(--space-6);
+  }
+
+  .filters a {
+    padding: 8px 16px;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    background: var(--color-card);
+    font-size: 0.9375rem;
+  }
+
+  .filters a:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+  }
+
+  .filters a.active {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: #ffffff;
+  }
+
+  .empty {
+    padding: var(--space-6);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-card);
+    background: var(--color-card);
+    color: var(--color-muted);
+  }
+</style>

@@ -22,6 +22,8 @@ export interface Apartment {
   slug: string;
   name: string;
   area: string;
+  /** Room tier, e.g. "Suite". Matches a slug in src/lib/tiers.ts. */
+  tier: string;
   description: string;
   price_per_night: number; // kobo
   max_guests: number;

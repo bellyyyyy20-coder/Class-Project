@@ -6,6 +6,9 @@ CREATE TABLE IF NOT EXISTS apartments (
   slug             TEXT NOT NULL UNIQUE,
   name             TEXT NOT NULL,
   area             TEXT NOT NULL,
+  -- Room tier: Standard | Executive | Deluxe | Suite | Presidential Suite
+  -- (the landing page groups rooms by this and shows a "from" price).
+  tier             TEXT NOT NULL DEFAULT 'Standard',
   description      TEXT NOT NULL,
   price_per_night  INTEGER NOT NULL,              -- kobo
   max_guests       INTEGER NOT NULL,
