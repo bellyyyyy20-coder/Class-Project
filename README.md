@@ -46,8 +46,8 @@ already listed in `.gitignore`, so it is never committed.
 | `SITE_URL` | Where the site runs, e.g. `http://localhost:4321`. Paystack redirects guests back here. |
 | `PUBLIC_WHATSAPP_NUMBER` | The WhatsApp number behind the "Contact us" buttons. International form, digits only, e.g. `2348012345678`. **The example value is a placeholder - replace it.** |
 | `HOST_EMAIL` | Your inbox. Contact-form messages are sent here. |
-| `RESEND_API_KEY` | Key from [Resend](https://resend.com). Leave it empty and the contact form shows a friendly error instead of sending. |
-| `RESEND_FROM_EMAIL` | The "from" address for contact emails. Use `ShortStay <onboarding@resend.dev>` while testing, or an address on a domain you verified in Resend, e.g. `ShortStay <hello@yourdomain.com>`. |
+| `RESEND_API_KEY` | Sending key from [Resend](https://resend.com). Leave it empty and the contact form shows a friendly error instead of sending. |
+| `FROM_EMAIL` | The "from" address for contact emails. Use `onboarding@resend.dev` while testing, or an address on a domain you verified in Resend. |
 
 > The secret key is only ever used on the server. It is never sent to the
 > browser.
@@ -58,15 +58,19 @@ address the Resend account was created with. So while testing, set:
 
 ```env
 HOST_EMAIL=the-address-you-signed-up-with@gmail.com
-RESEND_FROM_EMAIL=ShortStay <onboarding@resend.dev>
+FROM_EMAIL=onboarding@resend.dev
 ```
 
 To email any other inbox (your real host inbox, for example), add a domain at
 [resend.com/domains](https://resend.com/domains), verify it with the DNS records
-Resend shows you, then change `RESEND_FROM_EMAIL` to an address on that domain.
+Resend shows you, then change `FROM_EMAIL` to an address on that domain.
 No code changes are needed.
 
-For Vercel, add `DATABASE_URL` and `HOST_PASSWORD` in **Project Settings → Environment Variables**. Add a Paystack **test** key only if you want hosted test checkout; with no Paystack key, the site uses demo payment mode.
+For Vercel, add `DATABASE_URL`, `PAYSTACK_SECRET_KEY`, `HOST_PASSWORD`,
+`RESEND_API_KEY`, `FROM_EMAIL`, `HOST_EMAIL`, `PUBLIC_WHATSAPP_NUMBER`, and
+`SITE_URL` in **Project Settings → Environment Variables**. Set `SITE_URL` to
+the production website address. Keep `PAYSTACK_SECRET_KEY` empty for demo
+payment mode, or enter a Paystack **test** key for test checkout.
 
 ### Demo payment mode
 
@@ -123,7 +127,7 @@ payment is verified - both times inside a database transaction.
 
 1. Scroll to **Let us plan your stay** on the home page.
 2. Fill in name, email, phone and a message, then click **Send message**.
-3. With a valid `RESEND_API_KEY` and `RESEND_FROM_EMAIL`, the message arrives at
+3. With a valid `RESEND_API_KEY` and `FROM_EMAIL`, the message arrives at
    `HOST_EMAIL` and the page thanks the guest.
 4. Without a Resend key, the page shows a clear error and points to WhatsApp and
    email instead. Nothing breaks.
