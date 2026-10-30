@@ -3,14 +3,17 @@ node_modules/
 
 # Astro build output
 dist/
+.vercel/
 .astro/
 
 # secrets - never commit these
 .env
 .env.*
+!.env.example
 
 # database file - never commit this
 db/*.db
+*.db
 db/*.db-journal
 db/*.db-wal
 db/*.db-shm

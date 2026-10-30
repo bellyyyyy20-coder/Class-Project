@@ -6,12 +6,10 @@
 // the money arrived, then re-check the dates, then confirm.
 import type { APIRoute } from 'astro';
 import {
-  db,
   getBookingByReference,
-  markPaymentStatus,
-  updateBookingStatus,
+  markBookingCancelled,
+  confirmBooking,
 } from '../../lib/db.ts';
-import { findConflict } from '../../lib/availability.ts';
 import { hasPaystackKey, verifyPayment, type VerificationResult } from '../../lib/paystack.ts';
 
 function redirectTo(location: string): Response {
@@ -24,7 +22,7 @@ export const GET: APIRoute = async ({ url }) => {
     return new Response('Missing payment reference', { status: 400 });
   }
 
-  const booking = getBookingByReference(reference);
+  const booking = await getBookingByReference(reference);
   if (!booking) {
     return new Response('We do not know that booking reference.', { status: 404 });
   }
@@ -51,10 +49,7 @@ export const GET: APIRoute = async ({ url }) => {
     }
 
     if (verification.status !== 'success') {
-      db.transaction(() => {
-        markPaymentStatus(booking.id, 'failed');
-        updateBookingStatus(booking.id, 'cancelled');
-      })();
+      await markBookingCancelled(booking.id);
       return redirectTo(`/booking/${encodeURIComponent(reference)}?notice=payment-failed`);
     }
 
@@ -67,22 +62,13 @@ export const GET: APIRoute = async ({ url }) => {
     }
   } else {
     /* -------- demo mode: no key in .env, so "pretend" it was paid -------- */
-    markPaymentStatus(booking.id, 'success');
   }
 
   /* -------- the dates are checked AGAIN, inside one transaction -------- */
   // The guest could have been slow at the checkout, and in that time another
   // guest may have booked the same nights. If so, this booking becomes a
   // conflict and the host deals with the refund by hand.
-  db.transaction(() => {
-    const conflict = findConflict(booking.apartment_id, booking.check_in, booking.check_out);
-    if (conflict) {
-      updateBookingStatus(booking.id, 'conflict');
-    } else {
-      updateBookingStatus(booking.id, 'confirmed');
-      markPaymentStatus(booking.id, 'success');
-    }
-  })();
+  await confirmBooking(booking);
 
   return redirectTo(`/booking/${encodeURIComponent(reference)}`);
 };

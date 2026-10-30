@@ -3,7 +3,7 @@
 // A night is "taken" when a CONFIRMED booking covers it. The check-out day is
 // not a booked night, so a new guest can arrive the same day the previous
 // guest leaves (same-day turnover).
-import { db } from './db.ts';
+import { query } from './db.ts';
 import { addDays } from './dates.ts';
 
 /**
@@ -38,48 +38,41 @@ export interface Conflict {
  * This is the server-side check: even if someone skips the date picker,
  * the database refuses the overlapping booking.
  */
-export function findConflict(
+export async function findConflict(
   apartmentId: number,
   checkIn: string,
   checkOut: string
-): Conflict | undefined {
-  return db
-    .prepare(
-      `SELECT id, reference, guest_name, check_in, check_out
-         FROM bookings
-        WHERE apartment_id = ?
-          AND status = 'confirmed'
-          AND check_in < ?      -- existing.check_in < new.check_out
-          AND check_out > ?     -- existing.check_out > new.check_in
-        LIMIT 1`
-    )
-    .get(apartmentId, checkOut, checkIn) as Conflict | undefined;
+): Promise<Conflict | undefined> {
+  const confirmedBookings = await query<Conflict>(
+    `SELECT id, reference, guest_name, check_in, check_out
+       FROM bookings WHERE apartment_id = $1 AND status = 'confirmed'`,
+    [apartmentId]
+  );
+  return confirmedBookings.find((booking) =>
+    rangesOverlap(checkIn, checkOut, booking.check_in, booking.check_out)
+  );
 }
 
 /** True when nobody has confirmed these dates yet. */
-export function isRangeAvailable(
+export async function isRangeAvailable(
   apartmentId: number,
   checkIn: string,
   checkOut: string
-): boolean {
-  return findConflict(apartmentId, checkIn, checkOut) === undefined;
+): Promise<boolean> {
+  return (await findConflict(apartmentId, checkIn, checkOut)) === undefined;
 }
 
 /**
  * Every night (YYYY-MM-DD) that is already booked between `from` and `to`.
  * The check-out day is excluded on purpose.
  */
-export function getBookedNights(apartmentId: number, from: string, to: string): string[] {
-  const bookings = db
-    .prepare(
-      `SELECT check_in, check_out
-         FROM bookings
-        WHERE apartment_id = ?
-          AND status = 'confirmed'
-          AND check_in < ?      -- overlaps the window we asked about
-          AND check_out > ?`
-    )
-    .all(apartmentId, to, from) as { check_in: string; check_out: string }[];
+export async function getBookedNights(apartmentId: number, from: string, to: string): Promise<string[]> {
+  const bookings = await query<{ check_in: string; check_out: string }>(
+    `SELECT check_in, check_out FROM bookings
+      WHERE apartment_id = $1 AND status = 'confirmed'
+        AND check_in < $2 AND check_out > $3`,
+    [apartmentId, to, from]
+  );
 
   const nights: string[] = [];
   for (const booking of bookings) {

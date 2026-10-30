@@ -7,14 +7,10 @@
 // This file is inside src/pages/, so the libraries are one folder up.
 import type { APIRoute } from 'astro';
 import {
-  db,
   getApartmentBySlug,
-  createBooking,
-  createPayment,
-  markPaymentStatus,
-  updateBookingStatus,
+  createPendingBooking,
+  markBookingCancelled,
 } from '../lib/db.ts';
-import { findConflict } from '../lib/availability.ts';
 import { isValidDateString, nightsBetween, todayString } from '../lib/dates.ts';
 import { hasPaystackKey, initializePayment } from '../lib/paystack.ts';
 import { env } from '../lib/env.ts';
@@ -50,7 +46,7 @@ export const POST: APIRoute = async ({ request }) => {
   const checkIn = text('check_in');
   const checkOut = text('check_out');
 
-  const apartment = getApartmentBySlug(slug);
+  const apartment = await getApartmentBySlug(slug);
   if (!apartment) {
     return new Response('Apartment not found', { status: 404 });
   }
@@ -91,11 +87,7 @@ export const POST: APIRoute = async ({ request }) => {
 
   // The availability check and the insert happen together, so no other
   // request can slip a booking in between them.
-  const bookingId = db.transaction(() => {
-    if (findConflict(apartment.id, checkIn, checkOut)) {
-      return null; // someone else owns these nights
-    }
-    const newId = createBooking({
+  const bookingId = await createPendingBooking({
       reference,
       apartmentId: apartment.id,
       guestName,
@@ -106,9 +98,6 @@ export const POST: APIRoute = async ({ request }) => {
       checkOut,
       totalAmount,
     });
-    createPayment(newId, reference, totalAmount);
-    return newId;
-  })();
 
   if (bookingId === null) {
     return backWithError(slug, 'dates-taken');
@@ -133,10 +122,7 @@ export const POST: APIRoute = async ({ request }) => {
     return redirectTo(authorizationUrl);
   } catch {
     // Paystack would not start. Free the slot again so nobody is blocked.
-    db.transaction(() => {
-      updateBookingStatus(bookingId, 'cancelled');
-      markPaymentStatus(bookingId, 'failed');
-    })();
+    await markBookingCancelled(bookingId);
     return backWithError(slug, 'payment-failed');
   }
 };
