@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900" role="img" aria-label="Workspace of Ikoyi Garden Flat (placeholder photo)">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#F8F2E2"/>
+      <stop offset="1" stop-color="#FAF6EC"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="900" fill="url(#bg)"/>
+  <circle cx="880" cy="360" r="150" fill="#FFFFFF" opacity="0.55"/>
+  <circle cx="880" cy="360" r="150" fill="none" stroke="#C9A24B" stroke-width="4" opacity="0.7"/>
+  <rect x="180" y="330" width="420" height="380" rx="16" fill="#1B3A8C" opacity="0.15"/>
+  <rect x="230" y="390" width="320" height="220" rx="8" fill="#FFFFFF" opacity="0.5"/>
+  <path d="M700 700 L700 480 Q820 400 940 480 L940 700 Z" fill="#1B3A8C" opacity="0.14"/>
+  <rect x="100" y="700" width="1000" height="10" fill="#1B3A8C" opacity="0.18"/>
+  <rect x="36" y="36" width="1128" height="828" fill="none" stroke="#C9A24B" stroke-width="2" opacity="0.7"/>
+  <text x="600" y="820" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="64" fill="#1B3A8C">Ikoyi Garden Flat</text>
+  <text x="600" y="862" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="20" letter-spacing="6" fill="#A8842F">PLACEHOLDER PHOTO 2 OF 3</text>
+</svg>

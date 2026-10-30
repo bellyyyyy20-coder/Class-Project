@@ -1,0 +1,85 @@
+---
+import Layout from '../layouts/Layout.astro';
+import ApartmentCard from '../components/ApartmentCard.astro';
+import { getApartments } from '../lib/db.ts';
+
+// This page is rendered by the server on every request, so it always shows
+// the current data from the database.
+const apartments = await getApartments();
+---
+
+<Layout title="Home">
+  <section class="hero">
+    <div class="container">
+      <p class="hero-eyebrow">Shortlet apartments, booked direct</p>
+      <h1>Your stay, arranged directly.</h1>
+      <p class="hero-lead">Choose your apartment, pick your dates, and pay securely. No middleman, no waiting on replies.</p>
+      <a class="btn btn-gold" href="#apartments">View apartments</a>
+    </div>
+  </section>
+
+  <section class="section" id="apartments">
+    <div class="container">
+      <h2>Our apartments</h2>
+      <p class="muted section-lead">Three calm, well-kept homes. Book the dates that suit you.</p>
+
+      <div class="apartment-grid">
+        {apartments.map((apartment, index) => (
+          <ApartmentCard apartment={apartment} eager={index === 0} />
+        ))}
+      </div>
+    </div>
+  </section>
+</Layout>
+
+<style>
+  .hero {
+    padding: var(--space-8) 0;
+    text-align: center;
+  }
+
+  @media (min-width: 768px) {
+    .hero {
+      padding: var(--space-9) 0;
+    }
+  }
+
+  .hero-eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--color-accent-text);
+    margin-bottom: var(--space-3);
+  }
+
+  .hero-lead {
+    max-width: 560px;
+    margin: 0 auto var(--space-5);
+    color: var(--color-muted);
+    font-size: 1.0625rem;
+  }
+
+  .section-lead {
+    margin-bottom: var(--space-6);
+  }
+
+  /* 1 column on phones, 2 on tablets, 3 on desktop (style guide) */
+  .apartment-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-5);
+  }
+
+  @media (min-width: 640px) {
+    .apartment-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .apartment-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+</style>

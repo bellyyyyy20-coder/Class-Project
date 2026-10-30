@@ -1,0 +1,39 @@
+---
+// The host login page. The form posts to /host/session.
+import Layout from '../../layouts/Layout.astro';
+
+const wrongPassword = Astro.url.searchParams.get('error') === 'wrong';
+---
+
+<Layout title="Host login">
+  <section class="section">
+    <div class="container login-wrap">
+      <div class="card login-card">
+        <h1>Host login</h1>
+        <p class="muted">Enter the host password to see the calendar and bookings.</p>
+
+        {wrongPassword && (
+          <p class="notice notice-error" role="alert">That password is not right. Please try again.</p>
+        )}
+
+        <form method="post" action="/host/session">
+          <div class="field">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" autocomplete="current-password" required />
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">Log in</button>
+        </form>
+      </div>
+    </div>
+  </section>
+</Layout>
+
+<style>
+  .login-wrap {
+    max-width: 420px;
+  }
+
+  .login-card {
+    padding: var(--space-6);
+  }
+</style>
