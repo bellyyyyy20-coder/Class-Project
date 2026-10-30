@@ -1,0 +1,281 @@
+/* ==========================================================================
+   ShortStay global styles
+   Colour and type tokens come from STYLE_GUIDE.md. Every component below
+   uses these variables, so the whole site stays consistent.
+   ========================================================================== */
+
+:root {
+  --color-primary: #1B3A8C;        /* royal blue: buttons, header, links */
+  --color-primary-dark: #14296A;   /* hover/pressed */
+  --color-accent: #C9A24B;         /* gold: highlights, borders, small details */
+  --color-accent-dark: #A8842F;    /* gold text on light backgrounds */
+  /* A slightly darker gold, used only for small text such as prices, so the
+     text reaches the 4.5:1 contrast the style guide asks for. The gold above
+     is still used for lines, borders and decoration. */
+  --color-accent-text: #8A6A22;
+  --color-bg: #FAF6EC;             /* cream page background */
+  --color-card: #FFFFFF;           /* cards and panels */
+  --color-text: #1F2433;           /* main text */
+  /* Slightly darker than the style guide's #6B7280 so small secondary text
+     passes 4.5:1 contrast on the cream background. */
+  --color-muted: #62697A;          /* secondary text */
+  --color-border: #E7E0CC;         /* soft cream-gold borders */
+  --color-danger: #B3261E;         /* errors */
+  --color-success: #2E7D4F;        /* success */
+  --color-booked: #D9D4C5;         /* booked days in calendars */
+
+  /* Spacing scale from the style guide */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --space-9: 96px;
+
+  --radius: 8px;
+  --radius-card: 12px;
+  --shadow-card: 0 4px 20px rgba(20, 41, 106, 0.08);
+}
+
+/* --------------------------------------------------------------------------
+   Base
+   -------------------------------------------------------------------------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  /* Do not scale text up when a phone is held sideways */
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+h1, h2, h3, h4 {
+  font-family: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+  color: var(--color-text);
+  margin: 0 0 var(--space-4);
+  font-weight: 600;
+}
+
+h1 { font-size: clamp(2.25rem, 5vw, 3.5rem); }
+h2 { font-size: clamp(1.75rem, 3vw, 2.25rem); }
+h3 { font-size: 1.375rem; }
+
+p { margin: 0 0 var(--space-4); }
+
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--color-primary-dark);
+}
+
+img {
+  max-width: 100%;
+  /* height:auto lets the width/height attributes reserve the right space
+     without stretching the picture (aspect-ratio then does the work). */
+  height: auto;
+  display: block;
+}
+
+/* Visible focus ring everywhere (style guide: 2px gold, 2px offset) */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* --------------------------------------------------------------------------
+   Layout helpers
+   -------------------------------------------------------------------------- */
+.container {
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0 var(--space-4);
+}
+
+@media (min-width: 768px) {
+  .container {
+    padding: 0 var(--space-5);
+  }
+}
+
+.section {
+  padding: var(--space-7) 0;
+}
+
+@media (min-width: 768px) {
+  .section {
+    padding: var(--space-8) 0;
+  }
+}
+
+.muted { color: var(--color-muted); }
+
+.small { font-size: 0.875rem; }
+
+/* --------------------------------------------------------------------------
+   Buttons
+   -------------------------------------------------------------------------- */
+.btn {
+  display: inline-block;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  padding: 12px 24px;
+  font-family: 'Inter', sans-serif;
+  font-size: 1rem;
+  font-weight: 500;
+  line-height: 1.2;
+  text-align: center;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.btn-primary {
+  background: var(--color-primary);
+  color: #ffffff;
+}
+
+.btn-primary:hover {
+  background: var(--color-primary-dark);
+  color: #ffffff;
+}
+
+.btn-secondary {
+  background: transparent;
+  border: 1px solid var(--color-primary);
+  color: var(--color-primary);
+}
+
+.btn-secondary:hover {
+  background: var(--color-primary);
+  color: #ffffff;
+}
+
+/* Used once at most, on the home page hero */
+.btn-gold {
+  background: transparent;
+  border: 1px solid var(--color-accent);
+  color: var(--color-accent-text);
+}
+
+.btn-gold:hover {
+  background: var(--color-accent);
+  color: #ffffff;
+}
+
+.btn-block {
+  display: block;
+  width: 100%;
+}
+
+/* --------------------------------------------------------------------------
+   Cards
+   -------------------------------------------------------------------------- */
+.card {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+
+.card-body {
+  padding: var(--space-5);
+}
+
+/* --------------------------------------------------------------------------
+   Forms
+   -------------------------------------------------------------------------- */
+.field {
+  margin-bottom: var(--space-4);
+}
+
+.field label {
+  display: block;
+  margin-bottom: var(--space-1);
+  font-weight: 500;
+  font-size: 0.9375rem;
+}
+
+.field input,
+.field select {
+  width: 100%;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 12px;
+  font-family: 'Inter', sans-serif;
+  font-size: 1rem;
+  color: var(--color-text);
+}
+
+.field input:focus,
+.field select:focus {
+  border-color: var(--color-primary);
+}
+
+.field-error {
+  display: block;
+  margin-top: var(--space-1);
+  color: var(--color-danger);
+  font-size: 0.875rem;
+}
+
+/* A message at the top of a page (errors and successes) */
+.notice {
+  border-radius: var(--radius);
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-4);
+  border: 1px solid var(--color-border);
+  background: var(--color-card);
+}
+
+.notice-error {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+
+.notice-success {
+  border-color: var(--color-success);
+  color: var(--color-success);
+}
+
+/* --------------------------------------------------------------------------
+   Date picker (flatpickr) lives in src/styles/flatpickr-overrides.css,
+   which is imported AFTER flatpickr's own CSS so our styles win.
+   -------------------------------------------------------------------------- */
+
+/* --------------------------------------------------------------------------
+   Prices: gold-dark text, "₦45,000 / night" style
+   -------------------------------------------------------------------------- */
+.price {
+  color: var(--color-accent-text);
+  font-weight: 600;
+}
+
+.price .per {
+  color: var(--color-muted);
+  font-weight: 400;
+}

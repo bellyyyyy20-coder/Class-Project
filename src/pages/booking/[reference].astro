@@ -1,0 +1,211 @@
+---
+// Booking confirmation page: /booking/SSML3K9P2A
+// Also shows the "sorry, those dates were just booked" message when another
+// guest paid first, and clear messages when the payment did not complete.
+import Layout from '../../layouts/Layout.astro';
+import { getApartmentById, getBookingByReference } from '../../lib/db.ts';
+import { hasPaystackKey } from '../../lib/paystack.ts';
+import { formatDate, nightsBetween } from '../../lib/dates.ts';
+import { formatNaira } from '../../lib/money.ts';
+
+const reference = Astro.params.reference ?? '';
+const booking = getBookingByReference(reference);
+
+if (!booking) {
+  return new Response('We do not know that booking reference.', { status: 404 });
+}
+
+const apartment = getApartmentById(booking.apartment_id);
+const nights = nightsBetween(booking.check_in, booking.check_out);
+const demoMode = !hasPaystackKey();
+
+// Friendly explanations for the "not confirmed" situations.
+const notices: Record<string, string> = {
+  'verify-error':
+    'We could not check your payment with Paystack, so the booking is not confirmed yet. Nothing has been lost - refresh this page in a moment to try again.',
+  'payment-pending':
+    'Paystack is still confirming your payment. Give it a few seconds and refresh this page.',
+  'payment-failed':
+    'Your payment did not go through, so the booking has not been confirmed and your dates are not being held.',
+  'amount-mismatch':
+    'The amount Paystack reported does not match this booking, so we have not confirmed it. Please contact the host.',
+};
+const noticeKey = Astro.url.searchParams.get('notice') ?? '';
+const notice = notices[noticeKey] ?? '';
+---
+
+<Layout title={booking.status === 'confirmed' ? 'Booking confirmed' : 'Your booking'}>
+  <section class="section">
+    <div class="container narrow">
+      {demoMode && (
+        <p class="demo-badge">
+          DEMO PAYMENT - no Paystack key is set in .env, so this booking was
+          confirmed locally. Add your test key and this switches to real Paystack.
+        </p>
+      )}
+
+      {booking.status === 'confirmed' && (
+        <div class="card result-card">
+          <p class="result-mark success" aria-hidden="true">✓</p>
+          <h1>Your stay is confirmed.</h1>
+          <p class="muted">
+            Thank you, {booking.guest_name}. We have sent the details to {booking.guest_email}.
+          </p>
+
+          <hr class="rule" />
+
+          <dl class="summary-list">
+            <div>
+              <dt>Reference</dt>
+              <dd class="reference">{booking.reference}</dd>
+            </div>
+            <div>
+              <dt>Apartment</dt>
+              <dd>{apartment?.name} - {apartment?.area}</dd>
+            </div>
+            <div>
+              <dt>Check-in</dt>
+              <dd>{formatDate(booking.check_in)} from 2:00 PM</dd>
+            </div>
+            <div>
+              <dt>Check-out</dt>
+              <dd>{formatDate(booking.check_out)} before 11:00 AM</dd>
+            </div>
+            <div>
+              <dt>Guests</dt>
+              <dd>{booking.guests}</dd>
+            </div>
+            <div>
+              <dt>Total paid</dt>
+              <dd class="price">{formatNaira(booking.total_amount)} ({nights} night{nights === 1 ? '' : 's'})</dd>
+            </div>
+          </dl>
+
+          <a class="btn btn-secondary" href="/">Back to apartments</a>
+        </div>
+      )}
+
+      {booking.status === 'conflict' && (
+        <div class="card result-card">
+          <p class="result-mark error" aria-hidden="true">!</p>
+          <h1>Sorry - those dates were just booked.</h1>
+          <p>
+            Someone else finished paying for {formatDate(booking.check_in)} to{' '}
+            {formatDate(booking.check_out)} while you were at the checkout, so we
+            could not confirm your booking.
+          </p>
+          <p class="muted">
+            Your card was not charged in this demo. In real life the host would
+            refund you straight away. Please pick different dates.
+          </p>
+          {apartment && (
+            <a class="btn btn-primary" href={`/apartments/${apartment.slug}`}>
+              Choose other dates
+            </a>
+          )}
+        </div>
+      )}
+
+      {(booking.status === 'pending' || booking.status === 'cancelled') && (
+        <div class="card result-card">
+          <p class="result-mark muted-mark" aria-hidden="true">i</p>
+          <h1>Your booking is not confirmed yet.</h1>
+          {notice && <p class="notice notice-error">{notice}</p>}
+          <p>
+            Booking reference <strong class="reference">{booking.reference}</strong> for{' '}
+            {apartment?.name}, {formatDate(booking.check_in)} to {formatDate(booking.check_out)}.
+          </p>
+          <p class="muted">Your dates are not being held while the payment is unfinished.</p>
+          {apartment && (
+            <a class="btn btn-secondary" href={`/apartments/${apartment.slug}`}>
+              Start again
+            </a>
+          )}
+        </div>
+      )}
+    </div>
+  </section>
+</Layout>
+
+<style>
+  .narrow {
+    max-width: 680px;
+  }
+
+  .demo-badge {
+    background: var(--color-card);
+    border: 1px dashed var(--color-accent);
+    color: var(--color-accent-text);
+    border-radius: var(--radius);
+    padding: var(--space-3) var(--space-4);
+    font-size: 0.875rem;
+    margin-bottom: var(--space-4);
+  }
+
+  .result-card {
+    padding: var(--space-6);
+    text-align: center;
+  }
+
+  .result-mark {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.75rem;
+    font-weight: 600;
+    margin: 0 auto var(--space-4);
+  }
+
+  .result-mark.success {
+    background: #E6F2EB;
+    color: var(--color-success);
+  }
+
+  .result-mark.error {
+    background: #F7E4E3;
+    color: var(--color-danger);
+  }
+
+  .result-mark.muted-mark {
+    background: var(--color-bg);
+    color: var(--color-muted);
+  }
+
+  .rule {
+    border: none;
+    border-top: 1px solid var(--color-border);
+    margin: var(--space-5) 0;
+  }
+
+  .summary-list {
+    text-align: left;
+    margin: 0 0 var(--space-5);
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  .summary-list div {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-4);
+  }
+
+  .summary-list dt {
+    color: var(--color-muted);
+  }
+
+  .summary-list dd {
+    margin: 0;
+    font-weight: 500;
+    text-align: right;
+  }
+
+  .reference {
+    font-family: 'Inter', monospace;
+    letter-spacing: 0.05em;
+    color: var(--color-primary);
+  }
+</style>

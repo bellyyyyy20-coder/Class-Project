@@ -1,0 +1,259 @@
+---
+// Booking panel on the apartment detail page.
+// - The guest picks dates (flatpickr greys out booked nights).
+// - The panel shows the live total price.
+// - The form posts to /book, which validates everything again on the server.
+import { formatNaira } from '../lib/money.ts';
+import type { Apartment } from '../lib/db.ts';
+
+interface Props {
+  apartment: Apartment;
+}
+
+const { apartment } = Astro.props;
+
+// Friendly error messages, keyed by a code in the address bar.
+// /book redirects back here with ?error=dates-taken and so on.
+const errorMessages: Record<string, string> = {
+  'missing-fields': 'Please fill in your name, email, phone, number of guests and dates.',
+  'invalid-dates': 'Please choose both a check-in and a check-out date.',
+  'past-date': 'Check-in cannot be in the past. Please choose future dates.',
+  'bad-order': 'Check-out must be at least one night after check-in.',
+  'too-many-guests': 'That number of guests is more than this apartment allows.',
+  'dates-taken': 'Sorry, those dates were just booked by someone else. Please choose different dates.',
+  'payment-failed': 'We could not start the payment. Please try again.',
+};
+const errorCode = Astro.url.searchParams.get('error') ?? '';
+const errorMessage = errorMessages[errorCode] ?? '';
+---
+
+<aside class="card panel" aria-label="Booking" data-booking-panel
+  data-slug={apartment.slug}
+  data-price-kobo={apartment.price_per_night}
+  data-max-guests={apartment.max_guests}
+>
+  <p class="price panel-amount">
+    {formatNaira(apartment.price_per_night)} <span class="per">/ night</span>
+  </p>
+  <p class="muted small">{apartment.max_guests} guests maximum</p>
+
+  <hr class="panel-rule" />
+
+  {errorMessage && (
+    <p class="notice notice-error" role="alert">{errorMessage}</p>
+  )}
+
+  <form method="post" action="/book" class="booking-form">
+    <input type="hidden" name="slug" value={apartment.slug} />
+    <div class="field">
+      <label for="dates">Your dates</label>
+      <input
+        type="text"
+        id="dates"
+        name="dates"
+        placeholder="Check-in → check-out"
+        autocomplete="off"
+        required
+      />
+      <!-- The two real values the server needs, kept in step by the script -->
+      <input type="hidden" name="check_in" id="check_in" />
+      <input type="hidden" name="check_out" id="check_out" />
+      <span class="small muted" id="availability-note">Loading availability…</span>
+      <span class="field-error" id="date-error" hidden></span>
+    </div>
+
+    <div class="field">
+      <label for="guest_name">Full name</label>
+      <input type="text" id="guest_name" name="guest_name" autocomplete="name" required />
+    </div>
+
+    <div class="field">
+      <label for="guest_email">Email</label>
+      <input type="email" id="guest_email" name="guest_email" autocomplete="email" required />
+    </div>
+
+    <div class="field">
+      <label for="guest_phone">Phone</label>
+      <input type="tel" id="guest_phone" name="guest_phone" autocomplete="tel" required />
+    </div>
+
+    <div class="field">
+      <label for="guests">Number of guests</label>
+      <select id="guests" name="guests" required>
+        {Array.from({ length: apartment.max_guests }, (_, index) => index + 1).map((count) => (
+          <option value={count}>{count}</option>
+        ))}
+      </select>
+    </div>
+
+    <hr class="panel-rule" />
+
+    <p class="summary" id="booking-summary">Pick your dates to see the total.</p>
+
+    <button type="submit" class="btn btn-primary btn-block">Continue to payment</button>
+    <p class="small muted panel-note">No payment is taken yet — you will see the Paystack checkout next.</p>
+  </form>
+</aside>
+
+<style>
+  .panel {
+    padding: var(--space-5);
+  }
+
+  .panel-amount {
+    font-size: 1.5rem;
+    margin: 0 0 var(--space-1);
+  }
+
+  .panel-rule {
+    border: none;
+    border-top: 1px solid var(--color-border);
+    margin: var(--space-4) 0;
+  }
+
+  .panel-note {
+    margin: var(--space-3) 0 0;
+    text-align: center;
+  }
+
+  .summary {
+    font-weight: 500;
+    margin: 0 0 var(--space-4);
+  }
+
+  /* Total price is shown in gold-dark, like other prices */
+  .summary :global(.total) {
+    color: var(--color-accent-dark);
+    font-weight: 600;
+  }
+</style>
+
+<script>
+  import flatpickr from 'flatpickr';
+  import 'flatpickr/dist/flatpickr.min.css';
+  // Our overrides must load AFTER flatpickr's CSS so they win.
+  import '../styles/flatpickr-overrides.css';
+
+  // All of this runs only in the browser, and only on this panel.
+  const panel = document.querySelector<HTMLElement>('[data-booking-panel]');
+
+  if (panel) {
+    const slug = panel.dataset.slug ?? '';
+    const priceKobo = Number(panel.dataset.priceKobo ?? 0);
+
+    const dateInput = panel.querySelector<HTMLInputElement>('input[name="dates"]');
+    const checkInField = panel.querySelector<HTMLInputElement>('input[name="check_in"]');
+    const checkOutField = panel.querySelector<HTMLInputElement>('input[name="check_out"]');
+    const note = panel.querySelector<HTMLElement>('#availability-note');
+    const dateError = panel.querySelector<HTMLElement>('#date-error');
+    const summary = panel.querySelector<HTMLElement>('#booking-summary');
+
+    // Money is stored in kobo; show it in Naira with thousand separators.
+    const nairaFormatter = new Intl.NumberFormat('en-NG', { maximumFractionDigits: 0 });
+    const naira = (kobo: number) => `₦${nairaFormatter.format(kobo / 100)}`;
+
+    function showDateError(message: string) {
+      if (!dateError) return;
+      dateError.textContent = message;
+      dateError.hidden = message === '';
+    }
+
+    // Turns a JS Date into the YYYY-MM-DD string the server uses.
+    function toIso(date: Date): string {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    function updateSummary(dates: Date[]) {
+      if (!summary) return;
+      if (dates.length !== 2) {
+        summary.textContent = 'Pick your dates to see the total.';
+        return;
+      }
+      const millisecondsPerNight = 86400000; // one day in ms
+      // Use UTC maths so daylight saving changes cannot shift the count.
+      const nights = Math.round(
+        (Date.UTC(dates[1].getFullYear(), dates[1].getMonth(), dates[1].getDate()) -
+          Date.UTC(dates[0].getFullYear(), dates[0].getMonth(), dates[0].getDate())) /
+          millisecondsPerNight
+      );
+      const total = nights * priceKobo;
+      summary.innerHTML = `${nights} night${nights === 1 ? '' : 's'} × ${naira(priceKobo)} = <span class="total">${naira(total)}</span>`;
+    }
+
+    fetch(`/api/availability/${slug}`)
+      .then((response) => {
+        if (!response.ok) throw new Error('Could not load availability');
+        return response.json();
+      })
+      .then((data: { nights: string[] }) => {
+        if (!dateInput) return;
+
+        // The labels flatpickr puts on day cells, e.g. "November 5, 2026".
+        const monthNames = [
+          'January', 'February', 'March', 'April', 'May', 'June',
+          'July', 'August', 'September', 'October', 'November', 'December',
+        ];
+        const bookedLabels = new Set(
+          data.nights.map((night) => {
+            const [year, month, day] = night.split('-').map(Number);
+            return `${monthNames[month - 1]} ${day}, ${year}`;
+          })
+        );
+
+        flatpickr(dateInput, {
+          mode: 'range', // pick a check-in and a check-out together
+          dateFormat: 'Y-m-d', // YYYY-MM-DD, same format the server uses
+          minDate: 'today', // no past dates
+          showMonths: 1, // the panel is narrow, so one month at a time
+          disable: data.nights, // nights that are already booked
+          // Flatpickr gives every disabled day the same class, which would make
+          // past days look "booked". So we tag the real booked nights ourselves.
+          // This flatpickr version calls the hook as (dates, value, instance,
+          // dayElement), and the day element carries a label like
+          // "November 5, 2026", which is what we match against.
+          onDayCreate: (_dates, _value, _instance, dayElement) => {
+            const label = dayElement.getAttribute('aria-label');
+            if (label && bookedLabels.has(label)) {
+              dayElement.classList.add('booked-night');
+              dayElement.title = 'Already booked';
+            }
+          },
+          onChange: (selectedDates) => {
+            showDateError('');
+            if (selectedDates.length === 2) {
+              if (checkInField) checkInField.value = toIso(selectedDates[0]);
+              if (checkOutField) checkOutField.value = toIso(selectedDates[1]);
+            } else {
+              // Only one date picked so far: clear the hidden fields.
+              if (checkInField) checkInField.value = '';
+              if (checkOutField) checkOutField.value = '';
+            }
+            updateSummary(selectedDates);
+          },
+        });
+
+        const bookedCount = data.nights.length;
+        if (note) {
+          note.textContent =
+            bookedCount === 0
+              ? 'All dates are free. Minimum stay is 1 night.'
+              : `${bookedCount} night${bookedCount === 1 ? '' : 's'} already booked are greyed out.`;
+        }
+      })
+      .catch(() => {
+        if (note) note.textContent = 'We could not load availability. Please refresh the page.';
+      });
+
+    // Last check before sending: both dates must be chosen.
+    const form = panel.querySelector<HTMLFormElement>('form');
+    form?.addEventListener('submit', (event) => {
+      if (!checkInField?.value || !checkOutField?.value) {
+        event.preventDefault();
+        showDateError('Please choose both a check-in and a check-out date.');
+      }
+    });
+  }
+</script>

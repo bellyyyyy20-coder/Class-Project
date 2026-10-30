@@ -1,0 +1,165 @@
+---
+// Apartment detail page: /apartments/lekki-suite
+// This page is inside src/pages/apartments/, so we go up two folders.
+import Layout from '../../layouts/Layout.astro';
+import BookingPanel from '../../components/BookingPanel.astro';
+import { getApartmentBySlug } from '../../lib/db.ts';
+
+// In server-rendered Astro, URL parameters arrive in Astro.params.
+const slug = Astro.params.slug ?? '';
+const apartment = getApartmentBySlug(slug);
+
+// A slug that does not exist gives a proper 404 page.
+if (!apartment) {
+  return new Response('Apartment not found', { status: 404 });
+}
+
+const photos = apartment.photos.split(',').map((photo) => photo.trim());
+const amenities = apartment.amenities.split(',').map((item) => item.trim()).filter(Boolean);
+const rules = apartment.house_rules.split('\n').map((line) => line.trim()).filter(Boolean);
+---
+
+<Layout title={apartment.name} description={apartment.description.slice(0, 155)}>
+  <section class="section page-head">
+    <div class="container">
+      <a href="/" class="back-link">← All apartments</a>
+      <h1>{apartment.name}</h1>
+      <p class="muted">{apartment.area}</p>
+    </div>
+  </section>
+
+  <!-- Photo gallery: large first photo, smaller ones beside it -->
+  <section class="container">
+    <div class="gallery">
+      {photos.map((photo, index) => (
+        <img
+          src={`/images/${photo}`}
+          alt={`${apartment.name}, photo ${index + 1} of ${photos.length}`}
+          width="1200"
+          height="900"
+          loading={index === 0 ? 'eager' : 'lazy'}
+          class:list={['gallery-photo', { 'gallery-photo-main': index === 0 }]}
+        />
+      ))}
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container detail-grid">
+      <div class="detail-main">
+        <h2>About this apartment</h2>
+        <p>{apartment.description}</p>
+
+        <h3>Amenities</h3>
+        <ul class="amenities">
+          {amenities.map((amenity) => <li>{amenity}</li>)}
+        </ul>
+
+        <h3>House rules</h3>
+        <ul class="rules">
+          {rules.map((rule) => <li>{rule}</li>)}
+        </ul>
+      </div>
+
+      <BookingPanel apartment={apartment} />
+    </div>
+  </section>
+</Layout>
+
+<style>
+  .page-head {
+    padding-bottom: var(--space-4);
+  }
+
+  .back-link {
+    display: inline-block;
+    margin-bottom: var(--space-3);
+    font-weight: 500;
+  }
+
+  .page-head h1 {
+    margin-bottom: var(--space-2);
+  }
+
+  .gallery {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-3);
+  }
+
+  .gallery-photo {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    border-radius: var(--radius-card);
+    border: 1px solid var(--color-border);
+  }
+
+  @media (min-width: 768px) {
+    .gallery {
+      grid-template-columns: 2fr 1fr;
+      grid-template-rows: repeat(2, auto);
+    }
+
+    /* The first photo takes the full height on the left */
+    .gallery-photo-main {
+      grid-row: 1 / 3;
+      height: 100%;
+      aspect-ratio: auto;
+    }
+  }
+
+  .detail-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-6);
+  }
+
+  @media (min-width: 900px) {
+    .detail-grid {
+      grid-template-columns: 2fr 1fr;
+      align-items: start;
+    }
+
+    /* Keep the booking panel visible while reading the details */
+    .detail-grid > :global(aside) {
+      position: sticky;
+      top: var(--space-5);
+    }
+  }
+
+  .detail-main h3 {
+    margin-top: var(--space-5);
+  }
+
+  .amenities {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 var(--space-4);
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-2);
+  }
+
+  @media (min-width: 480px) {
+    .amenities {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  /* Gold tick before each amenity - gold is used only as a small detail */
+  .amenities li::before {
+    content: '✓';
+    color: var(--color-accent-text);
+    margin-right: var(--space-2);
+  }
+
+  .rules {
+    padding-left: var(--space-4);
+    margin: 0;
+  }
+
+  .rules li {
+    margin-bottom: var(--space-2);
+  }
+</style>

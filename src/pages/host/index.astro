@@ -1,0 +1,430 @@
+---
+// /host - the host's calendar. Password protected: without the cookie we
+// send the visitor to /host/login.
+import Layout from '../../layouts/Layout.astro';
+import { isValidSessionCookie, HOST_COOKIE_NAME } from '../../lib/auth.ts';
+import { getApartments, getApartmentBySlug, db } from '../../lib/db.ts';
+import {
+  addMonths,
+  currentMonthString,
+  dayStringsInMonth,
+  isValidMonthString,
+  todayString,
+  formatDate,
+  nightsBetween,
+} from '../../lib/dates.ts';
+import { formatNaira } from '../../lib/money.ts';
+
+if (!isValidSessionCookie(Astro.cookies.get(HOST_COOKIE_NAME)?.value)) {
+  return Astro.redirect('/host/login');
+}
+
+const apartments = getApartments();
+
+// The visitor picks an apartment and a month with two links in the address bar.
+const requestedSlug = Astro.url.searchParams.get('apartment') ?? '';
+const apartment =
+  getApartmentBySlug(requestedSlug) ?? apartments[0] ?? undefined;
+
+if (!apartment) {
+  return new Response('No apartments in the database yet. Run npm run seed.', {
+    status: 404,
+  });
+}
+
+const requestedMonth = Astro.url.searchParams.get('month') ?? '';
+const month = isValidMonthString(requestedMonth) ? requestedMonth : currentMonthString();
+const previousMonth = addMonths(month, -1);
+const nextMonth = addMonths(month, 1);
+
+// Every booking for this apartment, soonest first.
+interface HostBooking {
+  id: number;
+  reference: string;
+  guest_name: string;
+  guests: number;
+  check_in: string;
+  check_out: string;
+  total_amount: number;
+  status: string;
+  created_at: string;
+}
+
+const bookings = db
+  .prepare(
+    `SELECT id, reference, guest_name, guests, check_in, check_out, total_amount, status, created_at
+       FROM bookings
+      WHERE apartment_id = ?
+      ORDER BY check_in`
+  )
+  .all(apartment.id) as HostBooking[];
+
+// Which guest occupies each night of the displayed month.
+// A night belongs to a booking when check_in <= night < check_out.
+const guestByNight = new Map<string, string>();
+for (const booking of bookings) {
+  if (booking.status !== 'confirmed') continue; // only confirmed nights block
+  for (const night of dayStringsInMonth(month)) {
+    if (night >= booking.check_in && night < booking.check_out) {
+      guestByNight.set(night, booking.guest_name);
+    }
+  }
+}
+
+// Lay out the month as weeks, starting on Sunday (like a wall calendar).
+const monthLabel = new Date(
+  Number(month.slice(0, 4)),
+  Number(month.slice(5, 7)) - 1,
+  1
+).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+
+const daysInDisplayedMonth = dayStringsInMonth(month);
+const firstWeekday = new Date(
+  Number(month.slice(0, 4)),
+  Number(month.slice(5, 7)) - 1,
+  1
+).getDay();
+const totalCells = Math.ceil((firstWeekday + daysInDisplayedMonth.length) / 7) * 7;
+
+const cells: ({ day: string; guest?: string } | null)[] = [];
+for (let index = 0; index < totalCells; index += 1) {
+  const dayIndex = index - firstWeekday;
+  if (dayIndex < 0 || dayIndex >= daysInDisplayedMonth.length) {
+    cells.push(null); // padding before the 1st and after the last day
+  } else {
+    const day = daysInDisplayedMonth[dayIndex];
+    const guest = guestByNight.get(day);
+    cells.push(guest ? { day, guest } : { day });
+  }
+}
+
+const weekdayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const today = todayString();
+
+const monthNamesShort = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+];
+const shortDate = (value: string) => {
+  const [year, monthPart, day] = value.split('-').map(Number);
+  return `${day} ${monthNamesShort[monthPart - 1]} ${year}`;
+};
+---
+
+<Layout title="Host calendar">
+  <section class="section">
+    <div class="container">
+      <div class="host-head">
+        <div>
+          <h1>Host calendar</h1>
+          <p class="muted">Nights that are blocked for guests, plus every booking.</p>
+        </div>
+        <a class="btn btn-secondary" href="/host/logout">Log out</a>
+      </div>
+
+      <!-- Pick an apartment -->
+      <nav class="apartment-picker" aria-label="Choose an apartment">
+        {apartments.map((option) => (
+          <a
+            href={`/host?apartment=${option.slug}&month=${month}`}
+            class:list={['picker-link', { active: option.slug === apartment.slug }]}
+          >
+            {option.name}
+          </a>
+        ))}
+      </nav>
+
+      <!-- Move between months -->
+      <div class="month-nav">
+        <a class="btn btn-secondary btn-small" href={`/host?apartment=${apartment.slug}&month=${previousMonth}`}>← Previous</a>
+        <h2 class="month-title">{monthLabel}</h2>
+        <a class="btn btn-secondary btn-small" href={`/host?apartment=${apartment.slug}&month=${nextMonth}`}>Next →</a>
+      </div>
+
+      <!-- The month grid -->
+      <div class="card calendar-card">
+        <div class="calendar" role="grid" aria-label={`Calendar for ${monthLabel}`}>
+          {weekdayNames.map((weekday) => (
+            <div class="weekday" role="columnheader">{weekday}</div>
+          ))}
+          {cells.map((cell) =>
+            cell === null ? (
+              <div class="day empty" role="gridcell"></div>
+            ) : (
+              <div
+                class:list={['day', { booked: cell.guest === undefined ? false : true, today: cell.day === today }]}
+                role="gridcell"
+              >
+                <span class="day-number">{Number(cell.day.slice(8))}</span>
+                {cell.guest && <span class="day-guest">{cell.guest}</span>}
+              </div>
+            )
+          )}
+        </div>
+        <p class="small muted calendar-key">
+          <span class="key-swatch" aria-hidden="true"></span>
+          Booked night (check-out day is free again)
+        </p>
+      </div>
+
+      <!-- The bookings list -->
+      <h2 class="list-heading">Bookings for {apartment.name}</h2>
+
+      {bookings.length === 0 ? (
+        <p class="muted">No bookings yet. Run <code>npm run seed</code> for sample data.</p>
+      ) : (
+        <div class="card table-card">
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Guest</th>
+                  <th>Check-in</th>
+                  <th>Check-out</th>
+                  <th>Nights</th>
+                  <th>Guests</th>
+                  <th>Total</th>
+                  <th>Status</th>
+                  <th>Reference</th>
+                </tr>
+              </thead>
+              <tbody>
+                {bookings.map((booking) => (
+                  <tr>
+                    <td>{booking.guest_name}</td>
+                    <td>{shortDate(booking.check_in)}</td>
+                    <td>{shortDate(booking.check_out)}</td>
+                    <td>{nightsBetween(booking.check_in, booking.check_out)}</td>
+                    <td>{booking.guests}</td>
+                    <td>{formatNaira(booking.total_amount)}</td>
+                    <td>
+                      <span class={`status status-${booking.status}`}>{booking.status}</span>
+                    </td>
+                    <td class="reference-cell">{booking.reference}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  </section>
+</Layout>
+
+<style>
+  .host-head {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: var(--space-5);
+  }
+
+  .apartment-picker {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-bottom: var(--space-5);
+  }
+
+  .picker-link {
+    padding: 8px 16px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    background: var(--color-card);
+    color: var(--color-text);
+    font-weight: 500;
+  }
+
+  .picker-link:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+  }
+
+  .picker-link.active {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: #ffffff;
+  }
+
+  .month-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+  }
+
+  .month-title {
+    margin: 0;
+    text-align: center;
+  }
+
+  .btn-small {
+    padding: 8px 14px;
+    font-size: 0.9375rem;
+  }
+
+  .calendar-card {
+    padding: var(--space-4);
+    margin-bottom: var(--space-6);
+  }
+
+  .calendar {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+  }
+
+  .weekday {
+    text-align: center;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--color-muted);
+    padding: var(--space-2) 0;
+  }
+
+  .day {
+    min-height: 68px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    background: var(--color-card);
+    padding: 6px;
+    font-size: 0.875rem;
+  }
+
+  .day.empty {
+    background: transparent;
+    border-color: transparent;
+  }
+
+  .day-number {
+    font-weight: 500;
+    color: var(--color-muted);
+  }
+
+  /* Booked nights: soft blue tint with the guest's name (style guide) */
+  .day.booked {
+    background: #E3E9F8;
+    border-color: #B9C8EA;
+  }
+
+  .day.booked .day-number {
+    color: var(--color-primary);
+  }
+
+  .day-guest {
+    display: block;
+    margin-top: 2px;
+    color: var(--color-primary-dark);
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Today: thin gold outline */
+  .day.today {
+    border: 2px solid var(--color-accent);
+  }
+
+  .calendar-key {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin: var(--space-4) 0 0;
+  }
+
+  .key-swatch {
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    background: #E3E9F8;
+    border: 1px solid #B9C8EA;
+    display: inline-block;
+  }
+
+  .list-heading {
+    margin-top: var(--space-6);
+  }
+
+  .table-card {
+    padding: var(--space-2);
+  }
+
+  .table-scroll {
+    overflow-x: auto;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 720px;
+  }
+
+  th,
+  td {
+    text-align: left;
+    padding: var(--space-3);
+    border-bottom: 1px solid var(--color-border);
+    font-size: 0.9375rem;
+  }
+
+  th {
+    color: var(--color-muted);
+    font-weight: 600;
+    font-size: 0.8125rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  tr:last-child td {
+    border-bottom: none;
+  }
+
+  .status {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    text-transform: capitalize;
+  }
+
+  .status-confirmed {
+    background: #E6F2EB;
+    color: var(--color-success);
+  }
+
+  .status-pending {
+    background: var(--color-bg);
+    color: var(--color-muted);
+  }
+
+  .status-conflict,
+  .status-cancelled {
+    background: #F7E4E3;
+    color: var(--color-danger);
+  }
+
+  .reference-cell {
+    font-family: 'Inter', monospace;
+    letter-spacing: 0.03em;
+    color: var(--color-muted);
+  }
+
+  /* Phones: the calendar needs less height and smaller text */
+  @media (max-width: 640px) {
+    .day {
+      min-height: 52px;
+      font-size: 0.75rem;
+      padding: 4px;
+    }
+
+    .month-title {
+      font-size: 1.375rem;
+    }
+  }
+</style>

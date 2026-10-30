@@ -1,0 +1,66 @@
+/* Styles for the flatpickr date picker.
+   These are imported AFTER flatpickr's own CSS in BookingPanel.astro, so our
+   rules win when both target the same element - CSS uses the last one it sees
+   when specificity is equal. The style guide asks for: blue selected range,
+   booked days in --color-booked with strikethrough, and today with a thin gold
+   outline. */
+
+.flatpickr-calendar {
+  border-radius: var(--radius-card) !important;
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-card);
+  font-family: 'Inter', sans-serif;
+}
+
+.flatpickr-weekdays span.flatpickr-weekday {
+  color: var(--color-muted);
+  font-weight: 600;
+}
+
+.flatpickr-current-month .cur-month {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+/* Selected range: blue with white text */
+.flatpickr-day.selected,
+.flatpickr-day.startRange,
+.flatpickr-day.endRange {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #ffffff;
+}
+
+/* The days in the middle of the chosen range: a lighter blue */
+.flatpickr-day.inRange {
+  background: #E3E9F8;
+  border-color: #E3E9F8;
+  color: var(--color-text);
+}
+
+.flatpickr-day.selected.inRange {
+  color: #ffffff;
+}
+
+/* Booked nights: cream-grey fill, struck through, not clickable.
+   (We tag these days ourselves in the date picker script, so that past days
+   do not look "booked" too - those simply use flatpickr's pale grey.) */
+.flatpickr-day.booked-night,
+.flatpickr-day.booked-night:hover {
+  background: var(--color-booked) !important;
+  border-color: var(--color-booked) !important;
+  color: var(--color-text) !important;
+  text-decoration: line-through;
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+/* Today: thin gold outline */
+.flatpickr-day.today {
+  border-color: var(--color-accent);
+}
+
+.flatpickr-day.today.selected {
+  border-color: #ffffff;
+}

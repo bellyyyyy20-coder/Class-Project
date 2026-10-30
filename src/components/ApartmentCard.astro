@@ -1,0 +1,65 @@
+---
+// One apartment on the home page: photo on top, then name, area, price.
+import type { Apartment } from '../lib/db.ts';
+import { formatNaira } from '../lib/money.ts';
+
+interface Props {
+  apartment: Apartment;
+  /** The first image on the page loads right away; the rest wait (faster page). */
+  eager?: boolean;
+}
+
+const { apartment, eager = false } = Astro.props;
+const photos = apartment.photos.split(',').map((photo) => photo.trim());
+const firstPhoto = photos[0];
+---
+
+<article class="card apartment-card">
+  <a href={`/apartments/${apartment.slug}`} class="card-photo" aria-label={`View ${apartment.name}`}>
+    <img
+      src={`/images/${firstPhoto}`}
+      alt={`${apartment.name} in ${apartment.area}`}
+      width="1200"
+      height="900"
+      loading={eager ? 'eager' : 'lazy'}
+    />
+  </a>
+  <div class="card-body">
+    <h3 class="card-title">
+      <a href={`/apartments/${apartment.slug}`}>{apartment.name}</a>
+    </h3>
+    <p class="muted card-area">{apartment.area}</p>
+    <p class="price">
+      {formatNaira(apartment.price_per_night)} <span class="per">/ night</span>
+    </p>
+  </div>
+</article>
+
+<style>
+  .card-photo img {
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    width: 100%;
+  }
+
+  .card-title {
+    margin: 0 0 var(--space-1);
+    font-size: 1.375rem;
+  }
+
+  .card-title a {
+    color: var(--color-text);
+  }
+
+  .card-title a:hover {
+    color: var(--color-primary);
+  }
+
+  .card-area {
+    margin: 0 0 var(--space-2);
+  }
+
+  .price {
+    margin: 0;
+  }
+</style>
